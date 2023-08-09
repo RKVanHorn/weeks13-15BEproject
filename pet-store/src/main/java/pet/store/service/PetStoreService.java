@@ -1,8 +1,9 @@
 package pet.store.service;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -114,12 +115,11 @@ public class PetStoreService {
 		return new PetStoreEmployee(dbEmployee);
 	}
 
-	//Get help with this method. Why do I have to return customer again? Is it even doing anything?
+	
 	private Customer findCustomerById(Long customerId, Long petStoreId) {
 		Customer customer = customerDao.findById(customerId)
 				.orElseThrow(() -> new NoSuchElementException("Customer with ID=" + customerId + " does not exist."));
 		boolean found = false;
-//		Set<PetStore> petStores = customer.getPetStores();
 		for (PetStore petStore : customer.getPetStores()) {
 			if (petStore.getPetStoreId()==(petStoreId)) {
 				found = true;
@@ -147,7 +147,7 @@ public class PetStoreService {
 	private void copyCustomerFields(Customer customer, PetStoreCustomer petStoreCustomer) {
 		customer.setCustomerFirstName(petStoreCustomer.getCustomerFirstName());
 		customer.setCustomerLastName(petStoreCustomer.getCustomerLastName());
-		customer.setCustomerFirstName(petStoreCustomer.getCustomerEmail());
+		customer.setCustomerEmail(petStoreCustomer.getCustomerEmail());
 		customer.setCustomerId(petStoreCustomer.getCustomerId());
 	}
 	
@@ -157,10 +157,36 @@ public class PetStoreService {
 		Long customerId = petStoreCustomer.getCustomerId();
 		Customer customer = findOrCreateCustomer(customerId, petStoreId);
 		copyCustomerFields(customer, petStoreCustomer);
-		customer.getPetStores().add(petStore);
 		petStore.getCustomers().add(customer);
+		customer.getPetStores().add(petStore);
 		Customer dbCustomer = customerDao.save(customer);
 		return new PetStoreCustomer(dbCustomer);
+	}
+	
+	@Transactional(readOnly = true)
+	public List<PetStoreData> retrieveAllPetStores() {
+		List<PetStore> petStores = petStoreDao.findAll();
+		List<PetStoreData> result = new LinkedList<>();
+		
+		for(PetStore petStore: petStores) {
+			PetStoreData psd = new PetStoreData(petStore);
+			
+			psd.getCustomers().clear();
+			psd.getEmployees().clear();
+			
+			result.add(psd);
+		}
+		return result;
+	}
+
+	public PetStoreData returnPetStoreById(Long petStoreId) {
+		PetStore petStore = findPetStoreById(petStoreId);
+		return new PetStoreData(petStore);
+	}
+
+	public void deletePetStoreById(Long petStoreId) {
+		PetStore petStore = findPetStoreById(petStoreId);
+		petStoreDao.delete(petStore);
 	}
 
 }
